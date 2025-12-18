@@ -18,7 +18,7 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       next:
-        specifier: ^16.0.0
+        specifier: ^16.0.10
         version: 16.0.10(@babel/core@7.28.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react:
         specifier: ^19.0.0
@@ -55,7 +55,7 @@ importers:
         specifier: ^9.12.0
         version: 9.39.2(jiti@1.21.7)
       eslint-config-next:
-        specifier: ^16.0.0
+        specifier: ^16.0.10
         version: 16.0.10(@typescript-eslint/parser@8.49.0(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
       postcss:
         specifier: ^8.4.47

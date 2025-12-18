@@ -52,7 +52,8 @@ export function IndexManager({ indexType }: IndexManagerProps) {
             value={wordToAdd}
             onChange={(e) => setWordToAdd(e.target.value)}
             placeholder="Escribe una palabra..."
-            className="flex-1 px-6 py-3 bg-dark-bg border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-emerald focus:ring-2 focus:ring-accent-emerald/20 transition-all"
+            className="flex-1 px-6 py-3 bg-white/90 border border-white/20 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-accent-emerald focus:ring-2 focus:ring-accent-emerald/20 transition-all font-medium"
+            style={{ color: '#111827' }}
           />
           <button
             onClick={() => {
@@ -79,7 +80,8 @@ export function IndexManager({ indexType }: IndexManagerProps) {
             value={wordToDelete}
             onChange={(e) => setWordToDelete(e.target.value)}
             placeholder="Escribe una palabra..."
-            className="flex-1 px-6 py-3 bg-dark-bg border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
+            className="flex-1 px-6 py-3 bg-white/90 border border-white/20 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all font-medium"
+            style={{ color: '#111827' }}
           />
           <button
             onClick={() => {

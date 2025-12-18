@@ -93,38 +93,58 @@ export function IndexTreeViewer({ structure }: IndexTreeViewerProps) {
     return (
       <div className="p-8 text-center text-gray-400">
         <div className="text-6xl mb-4">🌳</div>
-        <p>No hay estructura para visualizar</p>
+        <p className="text-lg mb-2">No hay estructura para visualizar</p>
+        <p className="text-sm text-gray-500">
+          Crea un índice primero para ver su estructura
+        </p>
       </div>
     );
   }
 
   return (
-    <div style={{ width: '100%', height: '600px' }} className="rounded-xl overflow-hidden border border-white/10">
-      <ReactFlow 
-        nodes={nodes} 
-        edges={edges} 
-        fitView
-        className="bg-dark-bg"
-      >
-        <Background 
-          color="#334155" 
-          gap={16}
-          size={1}
-        />
-        <Controls 
-          style={{
-            backgroundColor: '#1e293b',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-          }}
-        />
-        <MiniMap 
-          style={{
-            backgroundColor: '#1e293b',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-          }}
-          nodeColor="#6366f1"
-        />
-      </ReactFlow>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between text-sm text-gray-400">
+        <span>Total de nodos: {nodes.length}</span>
+        <span>Total de conexiones: {edges.length}</span>
+      </div>
+      <div style={{ width: '100%', height: '600px' }} className="rounded-xl overflow-hidden border border-white/10 bg-dark-bg">
+        <ReactFlow 
+          nodes={nodes} 
+          edges={edges} 
+          fitView
+          className="bg-dark-bg"
+          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        >
+          <Background 
+            color="#334155" 
+            gap={16}
+            size={1}
+            variant="dots"
+          />
+          <Controls 
+            style={{
+              backgroundColor: '#1e293b',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '8px',
+            }}
+            showInteractive={false}
+          />
+          <MiniMap 
+            style={{
+              backgroundColor: '#1e293b',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '8px',
+            }}
+            nodeColor="#6366f1"
+            maskColor="rgba(0, 0, 0, 0.5)"
+          />
+        </ReactFlow>
+      </div>
+      <div className="text-xs text-gray-500 flex items-center gap-4">
+        <span>💡 Usa el mouse para arrastrar y hacer zoom</span>
+        <span>•</span>
+        <span>Usa los controles para navegar</span>
+      </div>
     </div>
   );
 }

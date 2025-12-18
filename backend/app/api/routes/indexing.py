@@ -7,10 +7,9 @@ from app.api.models.index import (
     IndexStatusResponse,
     IndexType
 )
-from app.services.index_service import IndexService
+from app.services import index_service
 
 router = APIRouter()
-index_service = IndexService()
 
 
 @router.post("/create")

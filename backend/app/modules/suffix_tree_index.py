@@ -100,7 +100,7 @@ class SuffixTreeIndex(InvertedIndex):
         
         # Build suffix tree
         if text:
-            self.suffix_tree = STree.STree(text)
+            self.suffix_tree = STree(text)
         else:
             self.suffix_tree = None
     

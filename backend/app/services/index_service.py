@@ -16,6 +16,7 @@ from app.modules.suffix_tree_index import SuffixTreeIndex
 from app.modules.patricia_tree_index import PatriciaTreeIndex
 from app.utils.text_processor import tokenize
 from app.core.config import settings
+from app.models import Document
 
 
 class IndexService:
@@ -23,56 +24,28 @@ class IndexService:
     
     def __init__(self):
         """Initialize the service."""
-        self.documents: Dict[str, DocumentResponse] = {}
         self.suffix_index: Optional[SuffixTreeIndex] = None
         self.patricia_index: Optional[PatriciaTreeIndex] = None
     
-    async def add_document(
-        self,
-        title: str,
-        content: str,
-        filename: Optional[str] = None
-    ) -> DocumentResponse:
-        """
-        Add a document to the system.
-        
-        Args:
-            title: Document title
-            content: Document content
-            filename: Optional filename
-            
-        Returns:
-            Created document
-        """
-        document_id = str(uuid.uuid4())
-        word_count = len(content.split())
-        
-        document = DocumentResponse(
-            id=document_id,
-            title=title,
-            content=content,
-            filename=filename,
-            created_at=datetime.now(),
-            word_count=word_count
-        )
-        
-        self.documents[document_id] = document
-        return document
-    
-    async def get_document(self, document_id: str) -> Optional[DocumentResponse]:
-        """Get a document by ID."""
-        return self.documents.get(document_id)
-    
     async def get_all_documents(self) -> List[DocumentResponse]:
-        """Get all documents."""
-        return list(self.documents.values())
+        """Get all documents from database."""
+        db_docs = await Document.all().order_by("-created_at")
+        return [
+            DocumentResponse(
+                id=str(doc.id),
+                title=doc.title,
+                content=doc.extracted_text or "",
+                filename=doc.title,
+                word_count=doc.word_count,
+                created_at=doc.created_at
+            )
+            for doc in db_docs
+        ]
     
     async def delete_document(self, document_id: str) -> bool:
-        """Delete a document."""
-        if document_id in self.documents:
-            del self.documents[document_id]
-            return True
-        return False
+        """Delete a document from database."""
+        deleted_count = await Document.filter(id=document_id).delete()
+        return deleted_count > 0
     
     async def create_index(
         self,
@@ -80,7 +53,7 @@ class IndexService:
         document_ids: Optional[List[str]] = None
     ) -> bool:
         """
-        Create an index from documents.
+        Create an index from documents in database.
         
         Args:
             index_type: Type of index (suffix or patricia)
@@ -90,11 +63,13 @@ class IndexService:
             True if successful
         """
         try:
-            # Determine which documents to index
+            # Get documents from database
             if document_ids is None:
-                document_ids = list(self.documents.keys())
+                db_docs = await Document.all()
+            else:
+                db_docs = await Document.filter(id__in=document_ids).all()
             
-            if not document_ids:
+            if not db_docs:
                 return False
             
             # Select the appropriate index
@@ -108,13 +83,19 @@ class IndexService:
                 return False
             
             # Process each document
-            for doc_id in document_ids:
-                if doc_id not in self.documents:
-                    continue
+            for doc in db_docs:
+                doc_id = str(doc.id)
+                # Use extracted_text if available, otherwise try to decode content
+                content = doc.extracted_text
+                if not content:
+                    try:
+                        import base64
+                        content = base64.b64decode(doc.content).decode('utf-8')
+                    except:
+                        content = ""
                 
-                document = self.documents[doc_id]
                 # Tokenize the document content
-                words = tokenize(document.content)
+                words = tokenize(content)
                 
                 # Add document to index
                 index.add_document(doc_id, words)
@@ -122,6 +103,8 @@ class IndexService:
             return True
         except Exception as e:
             print(f"Error creating index: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     async def get_index_status(self, index_type: str) -> IndexStatusResponse:
@@ -178,6 +161,7 @@ class IndexService:
             )
         
         if index is None:
+            # Return empty results instead of error - better UX
             return SearchResponse(
                 query=query,
                 results=[],
@@ -191,22 +175,25 @@ class IndexService:
         # Build results
         results: List[SearchResult] = []
         for doc_id in matching_doc_ids[:limit]:
-            if doc_id in self.documents:
-                doc = self.documents[doc_id]
-                # Find matching words
-                words_in_doc = index.get_words_for_document(doc_id)
-                matching_words = [
-                    word for word in words_in_doc 
-                    if query.lower() in word.lower()
-                ]
-                
-                result = SearchResult(
-                    document_id=doc_id,
-                    document_title=doc.title,
-                    matches=matching_words[:10],  # Limit matches
-                    relevance_score=len(matching_words) / max(len(words_in_doc), 1)
-                )
-                results.append(result)
+            # Get document from database
+            doc = await Document.get_or_none(id=doc_id)
+            if not doc:
+                continue
+            
+            # Find matching words
+            words_in_doc = index.get_words_for_document(doc_id)
+            matching_words = [
+                word for word in words_in_doc 
+                if query.lower() in word.lower()
+            ]
+            
+            result = SearchResult(
+                document_id=doc_id,
+                document_title=doc.title,
+                matches=matching_words[:10],  # Limit matches
+                relevance_score=len(matching_words) / max(len(words_in_doc), 1)
+            )
+            results.append(result)
         
         return SearchResponse(
             query=query,
@@ -224,21 +211,21 @@ class IndexService:
         # Try to add to both indexes if they exist
         success = False
         
+        # Get document IDs from database if needed
+        if document_id is None:
+            db_docs = await Document.all()
+            document_ids = [str(doc.id) for doc in db_docs]
+        else:
+            document_ids = [document_id]
+        
         if self.suffix_index is not None:
-            if document_id:
-                self.suffix_index.add_word(word, document_id)
-            else:
-                # Add to all documents (not recommended, but possible)
-                for doc_id in self.documents.keys():
-                    self.suffix_index.add_word(word, doc_id)
+            for doc_id in document_ids:
+                self.suffix_index.add_word(word, doc_id)
             success = True
         
         if self.patricia_index is not None:
-            if document_id:
-                self.patricia_index.add_word(word, document_id)
-            else:
-                for doc_id in self.documents.keys():
-                    self.patricia_index.add_word(word, doc_id)
+            for doc_id in document_ids:
+                self.patricia_index.add_word(word, doc_id)
             success = True
         
         return success

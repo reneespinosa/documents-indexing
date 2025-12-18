@@ -10,16 +10,23 @@ import Link from 'next/link';
 export default function IndexViewerPage() {
   const [indexType, setIndexType] = useState<'suffix' | 'patricia'>('suffix');
 
-  const { data: structure, isLoading } = useQuery({
+  const { data: structure, isLoading, error: structureError } = useQuery({
     queryKey: ['index-structure', indexType],
     queryFn: () => api.getIndexStructure(indexType),
     enabled: true,
+    retry: 1,
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats, error: statsError } = useQuery({
     queryKey: ['index-stats', indexType],
     queryFn: () => api.getIndexStats(indexType),
+    retry: 1,
   });
+
+  const handleIndexTypeChange = (newType: 'suffix' | 'patricia') => {
+    setIndexType(newType);
+    // Las queries se actualizarán automáticamente porque indexType está en el queryKey
+  };
 
   return (
     <div className="min-h-screen p-8 animate-fade-in">
@@ -32,33 +39,58 @@ export default function IndexViewerPage() {
           <p className="text-gray-400 text-lg">Explora la estructura de tus índices creados</p>
         </div>
 
-        <div className="mb-8 flex gap-4">
-          <button
-            onClick={() => setIndexType('suffix')}
-            className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${
-              indexType === 'suffix'
-                ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow-lg scale-105'
-                : 'btn-secondary'
-            }`}
-          >
-            🌲 Suffix Tree
-          </button>
-          <button
-            onClick={() => setIndexType('patricia')}
-            className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${
-              indexType === 'patricia'
-                ? 'bg-gradient-to-r from-accent-purple to-accent-emerald text-white shadow-lg scale-105'
-                : 'btn-secondary'
-            }`}
-          >
-            🌳 PATRICIA Tree
-          </button>
+        <div className="mb-8">
+          <div className="flex gap-4">
+            <button
+              onClick={() => handleIndexTypeChange('suffix')}
+              className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                indexType === 'suffix'
+                  ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow-lg scale-105'
+                  : 'btn-secondary hover:bg-white/5'
+              }`}
+            >
+              🌲 Suffix Tree
+            </button>
+            <button
+              onClick={() => handleIndexTypeChange('patricia')}
+              className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                indexType === 'patricia'
+                  ? 'bg-gradient-to-r from-accent-purple to-accent-emerald text-white shadow-lg scale-105'
+                  : 'btn-secondary hover:bg-white/5'
+              }`}
+            >
+              🌳 PATRICIA Tree
+            </button>
+          </div>
+          <p className="mt-3 text-sm text-gray-400">
+            {indexType === 'suffix' 
+              ? 'Visualizando estructura del Suffix Tree - Búsqueda de subcadenas'
+              : 'Visualizando estructura del PATRICIA Tree - Búsqueda por prefijo'}
+          </p>
         </div>
 
         {isLoading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-indigo mx-auto mb-4"></div>
             <p className="text-gray-400">Cargando estructura del índice...</p>
+          </div>
+        ) : structureError ? (
+          <div className="glass-card p-8 border-red-500/30 bg-red-500/10">
+            <div className="text-center">
+              <div className="text-6xl mb-4">⚠️</div>
+              <p className="text-red-300 text-lg mb-4">
+                Error al cargar la estructura del índice
+              </p>
+              <p className="text-gray-400 text-sm mb-4">
+                {structureError instanceof Error ? structureError.message : 'El índice podría no estar creado'}
+              </p>
+              <Link
+                href="/indexing"
+                className="text-accent-indigo hover:text-accent-purple transition-colors inline-flex items-center"
+              >
+                Ir a crear índice →
+              </Link>
+            </div>
           </div>
         ) : structure ? (
           <div className="space-y-6">

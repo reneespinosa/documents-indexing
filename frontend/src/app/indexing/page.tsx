@@ -92,25 +92,35 @@ export default function IndexingPage() {
           <p className="text-gray-400 text-lg">Genera índices usando Suffix Tree o PATRICIA Tree</p>
         </div>
 
-        <div className="mb-8 flex gap-4">
-          <button
-            onClick={() => setIndexType('suffix')}
-            className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${indexType === 'suffix'
-                ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow-lg scale-105'
-                : 'btn-secondary'
-              }`}
-          >
-            🌲 Suffix Tree
-          </button>
-          <button
-            onClick={() => setIndexType('patricia')}
-            className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${indexType === 'patricia'
-                ? 'bg-gradient-to-r from-accent-purple to-accent-emerald text-white shadow-lg scale-105'
-                : 'btn-secondary'
-              }`}
-          >
-            🌳 PATRICIA Tree
-          </button>
+        <div className="mb-8">
+          <label className="block text-sm font-medium mb-3 text-gray-300">
+            Selecciona el tipo de índice a crear
+          </label>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setIndexType('suffix')}
+              className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${indexType === 'suffix'
+                  ? 'bg-gradient-to-r from-accent-indigo to-accent-purple text-white shadow-lg scale-105'
+                  : 'btn-secondary hover:bg-white/5'
+                }`}
+            >
+              🌲 Suffix Tree
+            </button>
+            <button
+              onClick={() => setIndexType('patricia')}
+              className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${indexType === 'patricia'
+                  ? 'bg-gradient-to-r from-accent-purple to-accent-emerald text-white shadow-lg scale-105'
+                  : 'btn-secondary hover:bg-white/5'
+                }`}
+            >
+              🌳 PATRICIA Tree
+            </button>
+          </div>
+          <p className="mt-3 text-sm text-gray-400">
+            {indexType === 'suffix' 
+              ? 'Suffix Tree: Ideal para búsqueda de subcadenas dentro de palabras'
+              : 'PATRICIA Tree: Optimizado para búsqueda por prefijo de palabras'}
+          </p>
         </div>
 
         <div className="glass-card p-8 mb-8">

@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import documents, indexing, search, index_management
 from app.core.config import settings
+from app.db import init_db
 
 app = FastAPI(
     title="Document Indexing System",
@@ -25,6 +26,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Inicializar base de datos
+init_db(app)
 
 # Incluir routers
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
