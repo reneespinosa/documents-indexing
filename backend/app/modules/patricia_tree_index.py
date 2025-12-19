@@ -30,6 +30,34 @@ class PatriciaTreeIndex(InvertedIndex):
         self.patricia_tree = trie()
         self.created_at = datetime.now()
     
+    def add_word(self, word: str, document_id: str) -> None:
+        """
+        Add a word to the index for a specific document.
+        Override to also update PATRICIA tree structure.
+        
+        Args:
+            word: Word to add
+            document_id: Document identifier
+        """
+        word_lower = word.lower()
+        
+        # Call parent method to add word to base index
+        super().add_word(word_lower, document_id)
+        
+        # Add word to PATRICIA tree
+        # Store document IDs as the value in the tree
+        if word_lower in self.patricia_tree:
+            # Word exists, add document to existing set
+            existing_docs = self.patricia_tree[word_lower]
+            if isinstance(existing_docs, set):
+                existing_docs.add(document_id)
+            else:
+                # Convert to set if it's not already
+                self.patricia_tree[word_lower] = {document_id}
+        else:
+            # New word
+            self.patricia_tree[word_lower] = {document_id}
+    
     def add_document(self, document_id: str, words: List[str]) -> None:
         """
         Add a document to the index using PATRICIA Tree.
@@ -42,20 +70,6 @@ class PatriciaTreeIndex(InvertedIndex):
         for word in words:
             word_lower = word.lower()
             self.add_word(word_lower, document_id)
-            
-            # Add word to PATRICIA tree
-            # Store document IDs as the value in the tree
-            if word_lower in self.patricia_tree:
-                # Word exists, add document to existing set
-                existing_docs = self.patricia_tree[word_lower]
-                if isinstance(existing_docs, set):
-                    existing_docs.add(document_id)
-                else:
-                    # Convert to set if it's not already
-                    self.patricia_tree[word_lower] = {document_id}
-            else:
-                # New word
-                self.patricia_tree[word_lower] = {document_id}
     
     def search(self, query: str) -> List[str]:
         """

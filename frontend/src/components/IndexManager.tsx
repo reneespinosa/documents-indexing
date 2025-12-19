@@ -14,7 +14,7 @@ export function IndexManager({ indexType }: IndexManagerProps) {
   const queryClient = useQueryClient();
 
   const addWordMutation = useMutation({
-    mutationFn: (word: string) => api.addWordToIndex(word),
+    mutationFn: (word: string) => api.addWordToIndex(word, undefined, indexType),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['index-structure', indexType] });
       queryClient.invalidateQueries({ queryKey: ['index-stats', indexType] });

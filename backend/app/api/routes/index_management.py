@@ -18,7 +18,7 @@ async def add_word(request: WordAddRequest):
     Add a word to the index.
     
     Args:
-        request: Word to add and optional document ID
+        request: Word to add, optional document ID, and optional index type
         
     Returns:
         Success message
@@ -26,7 +26,8 @@ async def add_word(request: WordAddRequest):
     try:
         success = await index_service.add_word_to_index(
             word=request.word,
-            document_id=request.document_id
+            document_id=request.document_id,
+            index_type=request.index_type
         )
         
         if not success:

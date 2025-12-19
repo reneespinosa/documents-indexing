@@ -31,6 +31,7 @@ class WordAddRequest(BaseModel):
     """Request model for adding a word to index."""
     word: str
     document_id: Optional[str] = None
+    index_type: Optional[str] = None  # If None, adds to both indexes if they exist
 
 
 class WordDeleteRequest(BaseModel):

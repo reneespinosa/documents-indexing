@@ -205,10 +205,20 @@ class IndexService:
     async def add_word_to_index(
         self,
         word: str,
-        document_id: Optional[str] = None
+        document_id: Optional[str] = None,
+        index_type: Optional[str] = None
     ) -> bool:
-        """Add a word to the index."""
-        # Try to add to both indexes if they exist
+        """
+        Add a word to the index.
+        
+        Args:
+            word: Word to add
+            document_id: Optional document ID. If None, adds to all documents
+            index_type: Optional index type ('suffix' or 'patricia'). If None, adds to both if they exist
+        
+        Returns:
+            True if successful, False otherwise
+        """
         success = False
         
         # Get document IDs from database if needed
@@ -218,15 +228,29 @@ class IndexService:
         else:
             document_ids = [document_id]
         
-        if self.suffix_index is not None:
-            for doc_id in document_ids:
-                self.suffix_index.add_word(word, doc_id)
-            success = True
-        
-        if self.patricia_index is not None:
-            for doc_id in document_ids:
-                self.patricia_index.add_word(word, doc_id)
-            success = True
+        # If index_type is specified, add only to that index
+        if index_type:
+            if index_type == settings.INDEX_TYPE_SUFFIX:
+                if self.suffix_index is not None:
+                    for doc_id in document_ids:
+                        self.suffix_index.add_word(word, doc_id)
+                    success = True
+            elif index_type == settings.INDEX_TYPE_PATRICIA:
+                if self.patricia_index is not None:
+                    for doc_id in document_ids:
+                        self.patricia_index.add_word(word, doc_id)
+                    success = True
+        else:
+            # Add to both indexes if they exist (backward compatibility)
+            if self.suffix_index is not None:
+                for doc_id in document_ids:
+                    self.suffix_index.add_word(word, doc_id)
+                success = True
+            
+            if self.patricia_index is not None:
+                for doc_id in document_ids:
+                    self.patricia_index.add_word(word, doc_id)
+                success = True
         
         return success
     

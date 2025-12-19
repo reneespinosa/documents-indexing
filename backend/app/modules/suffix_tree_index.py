@@ -62,6 +62,29 @@ class SuffixTreeIndex(InvertedIndex):
         # Rebuild suffix tree with all words
         self._rebuild_suffix_tree()
     
+    def add_word(self, word: str, document_id: str) -> None:
+        """
+        Add a word to the index for a specific document.
+        Override to also update suffix tree structure.
+        
+        Args:
+            word: Word to add
+            document_id: Document identifier
+        """
+        word_lower = word.lower()
+        
+        # Check if this is a new word
+        is_new_word = word_lower not in self.word_to_documents
+        
+        # Call parent method to add word to base index
+        super().add_word(word_lower, document_id)
+        
+        # If it's a new word, generate suffixes and rebuild tree
+        if is_new_word:
+            self.word_to_suffixes[word_lower] = self._generate_suffixes(word_lower)
+            # Rebuild suffix tree with all words
+            self._rebuild_suffix_tree()
+    
     def _generate_suffixes(self, word: str) -> List[str]:
         """
         Generate all suffixes of a word.
