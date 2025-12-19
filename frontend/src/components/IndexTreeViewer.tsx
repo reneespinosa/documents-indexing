@@ -107,17 +107,19 @@ function buildNodesAndEdges(
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   
-  // Calcular el ancho total del árbol para centrarlo
-  const treeWidth = calculateSubtreeWidth(structure);
+  // Calcular el ancho total del árbol
+  const treeWidth = getSubtreeWidth(structure);
+  
+  // Centrar el árbol comenzando desde la izquierda
   const startX = -treeWidth / 2;
   
   // Obtener los layouts de todos los nodos
-  const layouts = positionNodes(structure, startX, 0);
+  const layouts = layoutTree(structure, startX, 0);
   
   // Crear un mapa de niveles para aplicar colores
   const levelMap = new Map<string, number>();
   function assignLevels(node: IndexStructureResponse['root'], level: number = 0) {
-    const nodeId = node.id || 'root';
+    const nodeId = node.id || (level === 0 ? 'root' : `node-${level}`);
     levelMap.set(nodeId, level);
     node.children.forEach(child => assignLevels(child, level + 1));
   }
@@ -133,13 +135,12 @@ function buildNodesAndEdges(
   
   // Crear nodos ReactFlow
   const nodeMap = new Map<string, Node>();
-  layouts.forEach((layout, index) => {
-    const nodeId = layout.node.id || `node-${index}`;
-    const level = levelMap.get(nodeId) || 0;
+  layouts.forEach((layout) => {
+    const level = levelMap.get(layout.id) || 0;
     const colorScheme = colors[Math.min(level, colors.length - 1)];
     
     const newNode: Node = {
-      id: nodeId,
+      id: layout.id,
       data: { label: layout.node.label },
       position: { x: layout.x, y: layout.y },
       style: {
@@ -156,12 +157,12 @@ function buildNodesAndEdges(
     };
     
     nodes.push(newNode);
-    nodeMap.set(nodeId, newNode);
+    nodeMap.set(layout.id, newNode);
   });
   
   // Crear edges
   function createEdges(node: IndexStructureResponse['root'], parentId: string | null = null) {
-    const nodeId = node.id || 'root';
+    const nodeId = node.id || (parentId === null ? 'root' : `node-${Math.random()}`);
     
     if (parentId && nodeMap.has(parentId) && nodeMap.has(nodeId)) {
       edges.push({
