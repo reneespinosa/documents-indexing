@@ -15,16 +15,113 @@ interface IndexTreeViewerProps {
   structure: IndexStructureResponse;
 }
 
-function buildNodesAndEdges(
+interface TreeNodeLayout {
+  node: IndexStructureResponse['root'];
+  x: number;
+  y: number;
+  width: number;
+  mod: number;
+}
+
+// Constantes para el layout
+const NODE_WIDTH = 150;
+const NODE_HEIGHT = 80;
+const LEVEL_HEIGHT = 200;
+const SIBLING_SPACING = 100;
+const SUBTREE_SPACING = 50;
+
+// Primera pasada: calcular el ancho de cada subárbol
+function calculateSubtreeWidth(node: IndexStructureResponse['root']): number {
+  if (node.children.length === 0) {
+    return NODE_WIDTH;
+  }
+  
+  let totalWidth = 0;
+  for (const child of node.children) {
+    totalWidth += calculateSubtreeWidth(child) + SIBLING_SPACING;
+  }
+  totalWidth -= SIBLING_SPACING; // Remover el último espaciado
+  
+  return Math.max(NODE_WIDTH, totalWidth);
+}
+
+// Segunda pasada: posicionar los nodos usando un algoritmo jerárquico mejorado
+function positionNodes(
   node: IndexStructureResponse['root'],
-  parentId: string | null = null,
-  nodes: Node[] = [],
-  edges: Edge[] = [],
-  x: number = 0,
-  y: number = 0,
+  x: number,
+  y: number,
   level: number = 0
+): TreeNodeLayout[] {
+  const layouts: TreeNodeLayout[] = [];
+  const nodeId = node.id || `node-${level}`;
+  
+  let currentX = x;
+  
+  if (node.children.length > 0) {
+    // Calcular el ancho total de todos los hijos
+    const childrenWidths = node.children.map(child => calculateSubtreeWidth(child));
+    const totalChildrenWidth = childrenWidths.reduce((sum, w) => sum + w, 0) + 
+                               (node.children.length - 1) * SIBLING_SPACING;
+    
+    // Centrar el nodo padre sobre sus hijos
+    const parentX = x + totalChildrenWidth / 2 - NODE_WIDTH / 2;
+    currentX = parentX;
+    
+    // Posicionar cada hijo
+    let childX = x;
+    for (let i = 0; i < node.children.length; i++) {
+      const child = node.children[i];
+      const childWidth = childrenWidths[i];
+      
+      // Posicionar el hijo centrado en su subárbol
+      const childCenterX = childX + childWidth / 2;
+      const childLayouts = positionNodes(
+        child,
+        childX,
+        y + LEVEL_HEIGHT,
+        level + 1
+      );
+      
+      layouts.push(...childLayouts);
+      
+      // Mover x para el siguiente hijo
+      childX += childWidth + SIBLING_SPACING;
+    }
+  }
+  
+  // Agregar el nodo actual
+  layouts.push({
+    node,
+    x: currentX,
+    y,
+    width: NODE_WIDTH,
+    mod: 0,
+  });
+  
+  return layouts;
+}
+
+function buildNodesAndEdges(
+  structure: IndexStructureResponse['root']
 ): { nodes: Node[]; edges: Edge[] } {
-  const nodeId = node.id || `node-${nodes.length}`;
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  
+  // Calcular el ancho total del árbol para centrarlo
+  const treeWidth = calculateSubtreeWidth(structure);
+  const startX = -treeWidth / 2;
+  
+  // Obtener los layouts de todos los nodos
+  const layouts = positionNodes(structure, startX, 0);
+  
+  // Crear un mapa de niveles para aplicar colores
+  const levelMap = new Map<string, number>();
+  function assignLevels(node: IndexStructureResponse['root'], level: number = 0) {
+    const nodeId = node.id || 'root';
+    levelMap.set(nodeId, level);
+    node.children.forEach(child => assignLevels(child, level + 1));
+  }
+  assignLevels(structure);
   
   // Colores según el nivel
   const colors = [
@@ -34,50 +131,59 @@ function buildNodesAndEdges(
     { bg: '#334155', border: '#475569' }, // Level 3+
   ];
   
-  const colorScheme = colors[Math.min(level, colors.length - 1)];
-  
-  const newNode: Node = {
-    id: nodeId,
-    data: { label: node.label },
-    position: { x, y },
-    style: {
-      background: colorScheme.bg,
-      color: '#fff',
-      border: `2px solid ${colorScheme.border}`,
-      borderRadius: '12px',
-      padding: '12px 16px',
-      minWidth: '120px',
-      fontWeight: level === 0 ? 'bold' : 'semibold',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-    },
-  };
-
-  nodes.push(newNode);
-
-  if (parentId) {
-    edges.push({
-      id: `edge-${parentId}-${nodeId}`,
-      source: parentId,
-      target: nodeId,
-      type: 'smoothstep',
+  // Crear nodos ReactFlow
+  const nodeMap = new Map<string, Node>();
+  layouts.forEach((layout, index) => {
+    const nodeId = layout.node.id || `node-${index}`;
+    const level = levelMap.get(nodeId) || 0;
+    const colorScheme = colors[Math.min(level, colors.length - 1)];
+    
+    const newNode: Node = {
+      id: nodeId,
+      data: { label: layout.node.label },
+      position: { x: layout.x, y: layout.y },
       style: {
-        stroke: '#6366f1',
-        strokeWidth: 2,
+        background: colorScheme.bg,
+        color: '#fff',
+        border: `2px solid ${colorScheme.border}`,
+        borderRadius: '12px',
+        padding: '12px 16px',
+        minWidth: '120px',
+        fontWeight: level === 0 ? 'bold' : 'semibold',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+        textAlign: 'center',
       },
-      animated: true,
+    };
+    
+    nodes.push(newNode);
+    nodeMap.set(nodeId, newNode);
+  });
+  
+  // Crear edges
+  function createEdges(node: IndexStructureResponse['root'], parentId: string | null = null) {
+    const nodeId = node.id || 'root';
+    
+    if (parentId && nodeMap.has(parentId) && nodeMap.has(nodeId)) {
+      edges.push({
+        id: `edge-${parentId}-${nodeId}`,
+        source: parentId,
+        target: nodeId,
+        type: 'smoothstep',
+        style: {
+          stroke: '#6366f1',
+          strokeWidth: 2,
+        },
+        animated: true,
+      });
+    }
+    
+    node.children.forEach(child => {
+      createEdges(child, nodeId);
     });
   }
-
-  const childCount = node.children.length;
-  const spacing = 200;
-  const startX = x - ((childCount - 1) * spacing) / 2;
-
-  node.children.forEach((child, index) => {
-    const childX = startX + index * spacing;
-    const childY = y + 150;
-    buildNodesAndEdges(child, nodeId, nodes, edges, childX, childY, level + 1);
-  });
-
+  
+  createEdges(structure);
+  
   return { nodes, edges };
 }
 
