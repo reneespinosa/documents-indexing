@@ -184,20 +184,25 @@ npm run test
 ## 🛠️ Tecnologías
 
 ### Backend
-- FastAPI
+- FastAPI >=0.104.0
 - Python 3.8+
-- suffix-trees
-- patricia-trie
-- NetworkX
-- Matplotlib
+- suffix-trees >=0.3.0
+- patricia-trie >=1.0.0
+- NetworkX >=3.0
+- Matplotlib >=3.7.0
+- Uvicorn >=0.24.0
+- Pydantic >=2.0.0
+- Tortoise ORM 0.20.0
 
 ### Frontend
-- Next.js 14
-- React 18
-- TypeScript
-- React Flow
-- Tailwind CSS
-- TanStack Query
+- Next.js ^16.0.10
+- React ^19.0.0
+- TypeScript ^5.6.3
+- React Flow ^11.11.4
+- Tailwind CSS ^3.4.14
+- TanStack Query ^5.56.2
+- Axios ^1.7.7
+- Zustand ^4.5.4
 
 ## 👥 Equipo
 
