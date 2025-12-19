@@ -12,6 +12,8 @@ export default function DocumentsPage() {
   const queryClient = useQueryClient();
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ['documents'],
@@ -22,13 +24,25 @@ export default function DocumentsPage() {
     mutationFn: (id: string) => api.deleteDocument(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      setShowDeleteConfirm(false);
+      setDocumentToDelete(null);
     },
   });
 
-  const handleDelete = (id: string) => {
-    if (confirm('¿Estás seguro de que deseas eliminar este documento?')) {
-      deleteMutation.mutate(id);
+  const handleDelete = (doc: Document) => {
+    setDocumentToDelete(doc);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (documentToDelete) {
+      deleteMutation.mutate(documentToDelete.id);
     }
+  };
+
+  const closeDeleteConfirm = () => {
+    setShowDeleteConfirm(false);
+    setDocumentToDelete(null);
   };
 
   const handleViewDocument = (doc: Document) => {
@@ -96,7 +110,7 @@ export default function DocumentsPage() {
                         👁️
                       </button>
                       <button
-                        onClick={() => handleDelete(doc.id)}
+                        onClick={() => handleDelete(doc)}
                         className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                         title="Eliminar"
                       >
@@ -138,6 +152,34 @@ export default function DocumentsPage() {
                 Cerrar
               </button>
             </div>
+          </div>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={showDeleteConfirm}
+          onClose={closeDeleteConfirm}
+          title="Confirmar Eliminación"
+          type="error"
+        >
+          <div className="text-gray-200 text-lg leading-relaxed">
+            ¿Estás seguro de que deseas eliminar el documento <span className="font-bold text-white">"{documentToDelete?.title}"</span>?
+            <p className="text-sm text-gray-400 mt-2">Esta acción no se puede deshacer.</p>
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={closeDeleteConfirm}
+              className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleConfirmDelete}
+              disabled={deleteMutation.isPending}
+              className="px-6 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+            </button>
           </div>
         </Modal>
       </div>

@@ -4,6 +4,8 @@ Service layer for index management and operations.
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import uuid
+import os
+from pathlib import Path
 from app.api.models.document import DocumentResponse
 from app.api.models.index import (
     IndexStatusResponse,
@@ -15,6 +17,7 @@ from app.api.models.index import (
 from app.modules.suffix_tree_index import SuffixTreeIndex
 from app.modules.patricia_tree_index import PatriciaTreeIndex
 from app.utils.text_processor import tokenize
+from app.utils.persistence import save_index_json, load_index_json
 from app.core.config import settings
 from app.models import Document
 
@@ -26,6 +29,65 @@ class IndexService:
         """Initialize the service."""
         self.suffix_index: Optional[SuffixTreeIndex] = None
         self.patricia_index: Optional[PatriciaTreeIndex] = None
+        self._indices_dir = Path(settings.INDICES_DIR)
+        self._indices_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Load existing indexes on startup
+        self._load_indexes()
+    
+    def _get_index_path(self, index_type: str) -> Path:
+        """Get the file path for an index."""
+        return self._indices_dir / f"{index_type}_index.json"
+    
+    def _save_index(self, index_type: str) -> bool:
+        """
+        Save an index to disk.
+        
+        Args:
+            index_type: Type of index ('suffix' or 'patricia')
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            if index_type == settings.INDEX_TYPE_SUFFIX:
+                index = self.suffix_index
+            elif index_type == settings.INDEX_TYPE_PATRICIA:
+                index = self.patricia_index
+            else:
+                return False
+            
+            if index is None:
+                return False
+            
+            # Serialize index to dict
+            index_data = index.to_dict()
+            
+            # Save to file
+            filepath = str(self._get_index_path(index_type))
+            return save_index_json(index_data, filepath)
+        except Exception as e:
+            print(f"Error saving index {index_type}: {e}")
+            return False
+    
+    def _load_indexes(self) -> None:
+        """Load indexes from disk on startup."""
+        try:
+            # Load suffix index
+            suffix_path = self._get_index_path(settings.INDEX_TYPE_SUFFIX)
+            suffix_data = load_index_json(str(suffix_path))
+            if suffix_data:
+                self.suffix_index = SuffixTreeIndex.from_dict(suffix_data)
+                print(f"Loaded suffix index from {suffix_path}")
+            
+            # Load patricia index
+            patricia_path = self._get_index_path(settings.INDEX_TYPE_PATRICIA)
+            patricia_data = load_index_json(str(patricia_path))
+            if patricia_data:
+                self.patricia_index = PatriciaTreeIndex.from_dict(patricia_data)
+                print(f"Loaded patricia index from {patricia_path}")
+        except Exception as e:
+            print(f"Error loading indexes: {e}")
     
     async def get_all_documents(self) -> List[DocumentResponse]:
         """Get all documents from database."""
@@ -99,6 +161,9 @@ class IndexService:
                 
                 # Add document to index
                 index.add_document(doc_id, words)
+            
+            # Save index to disk after creation
+            self._save_index(index_type)
             
             return True
         except Exception as e:
@@ -235,22 +300,28 @@ class IndexService:
                     for doc_id in document_ids:
                         self.suffix_index.add_word(word, doc_id)
                     success = True
+                    # Save after modification
+                    self._save_index(index_type)
             elif index_type == settings.INDEX_TYPE_PATRICIA:
                 if self.patricia_index is not None:
                     for doc_id in document_ids:
                         self.patricia_index.add_word(word, doc_id)
                     success = True
+                    # Save after modification
+                    self._save_index(index_type)
         else:
             # Add to both indexes if they exist (backward compatibility)
             if self.suffix_index is not None:
                 for doc_id in document_ids:
                     self.suffix_index.add_word(word, doc_id)
                 success = True
+                self._save_index(settings.INDEX_TYPE_SUFFIX)
             
             if self.patricia_index is not None:
                 for doc_id in document_ids:
                     self.patricia_index.add_word(word, doc_id)
                 success = True
+                self._save_index(settings.INDEX_TYPE_PATRICIA)
         
         return success
     
@@ -271,7 +342,13 @@ class IndexService:
         if index is None:
             return False
         
-        return index.remove_word(word)
+        result = index.remove_word(word)
+        
+        # Save after modification
+        if result:
+            self._save_index(index_type)
+        
+        return result
     
     async def get_index_structure(
         self,

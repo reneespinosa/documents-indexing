@@ -209,6 +209,59 @@ class SuffixTreeIndex(InvertedIndex):
             self._rebuild_suffix_tree()
         return result
     
+    def to_dict(self) -> Dict:
+        """
+        Serialize index to dictionary for persistence.
+        
+        Returns:
+            Dictionary with serializable index data
+        """
+        return {
+            "word_to_documents": {
+                word: list(docs) for word, docs in self.word_to_documents.items()
+            },
+            "document_to_words": {
+                doc_id: list(words) for doc_id, words in self.document_to_words.items()
+            },
+            "word_to_suffixes": self.word_to_suffixes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> "SuffixTreeIndex":
+        """
+        Reconstruct index from dictionary.
+        
+        Args:
+            data: Dictionary with index data
+            
+        Returns:
+            Reconstructed SuffixTreeIndex instance
+        """
+        index = cls()
+        
+        # Restore word_to_documents (convert lists back to sets)
+        index.word_to_documents = {
+            word: set(docs) for word, docs in data.get("word_to_documents", {}).items()
+        }
+        
+        # Restore document_to_words (convert lists back to sets)
+        index.document_to_words = {
+            doc_id: set(words) for doc_id, words in data.get("document_to_words", {}).items()
+        }
+        
+        # Restore word_to_suffixes
+        index.word_to_suffixes = data.get("word_to_suffixes", {})
+        
+        # Restore created_at
+        if data.get("created_at"):
+            index.created_at = datetime.fromisoformat(data["created_at"])
+        
+        # Rebuild suffix tree from restored data
+        index._rebuild_suffix_tree()
+        
+        return index
+    
     def get_structure_data(self) -> Dict:
         """
         Get structure data for visualization.

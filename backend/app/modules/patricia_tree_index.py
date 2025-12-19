@@ -130,6 +130,69 @@ class PatriciaTreeIndex(InvertedIndex):
         
         return result
     
+    def to_dict(self) -> Dict:
+        """
+        Serialize index to dictionary for persistence.
+        
+        Returns:
+            Dictionary with serializable index data
+        """
+        # Convert patricia_tree to dict (convert sets to lists)
+        patricia_tree_dict = {}
+        for key, value in self.patricia_tree.items():
+            if isinstance(value, set):
+                patricia_tree_dict[key] = list(value)
+            else:
+                patricia_tree_dict[key] = value
+        
+        return {
+            "word_to_documents": {
+                word: list(docs) for word, docs in self.word_to_documents.items()
+            },
+            "document_to_words": {
+                doc_id: list(words) for doc_id, words in self.document_to_words.items()
+            },
+            "patricia_tree": patricia_tree_dict,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> "PatriciaTreeIndex":
+        """
+        Reconstruct index from dictionary.
+        
+        Args:
+            data: Dictionary with index data
+            
+        Returns:
+            Reconstructed PatriciaTreeIndex instance
+        """
+        index = cls()
+        
+        # Restore word_to_documents (convert lists back to sets)
+        index.word_to_documents = {
+            word: set(docs) for word, docs in data.get("word_to_documents", {}).items()
+        }
+        
+        # Restore document_to_words (convert lists back to sets)
+        index.document_to_words = {
+            doc_id: set(words) for doc_id, words in data.get("document_to_words", {}).items()
+        }
+        
+        # Restore patricia_tree (convert lists back to sets)
+        patricia_tree_data = data.get("patricia_tree", {})
+        for key, value in patricia_tree_data.items():
+            if isinstance(value, list):
+                index.patricia_tree[key] = set(value)
+            else:
+                index.patricia_tree[key] = value
+        
+        # Restore created_at
+        if data.get("created_at"):
+            index.created_at = datetime.fromisoformat(data["created_at"])
+        
+        return index
+    
     def get_structure_data(self) -> Dict:
         """
         Get structure data for visualization.
