@@ -29,9 +29,12 @@ export function IndexManager({ indexType }: IndexManagerProps) {
 
   const addWordMutation = useMutation({
     mutationFn: (word: string) => api.addWordToIndex(word, undefined, indexType),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['index-structure', indexType] });
-      queryClient.invalidateQueries({ queryKey: ['index-stats', indexType] });
+    onSuccess: async () => {
+      // Invalidate and refetch immediately
+      await queryClient.invalidateQueries({ queryKey: ['index-structure', indexType] });
+      await queryClient.invalidateQueries({ queryKey: ['index-stats', indexType] });
+      await queryClient.refetchQueries({ queryKey: ['index-structure', indexType] });
+      await queryClient.refetchQueries({ queryKey: ['index-stats', indexType] });
       setWordToAdd('');
       setModalState({
         isOpen: true,
@@ -52,9 +55,12 @@ export function IndexManager({ indexType }: IndexManagerProps) {
 
   const deleteWordMutation = useMutation({
     mutationFn: (word: string) => api.deleteWordFromIndex(word, indexType),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['index-structure', indexType] });
-      queryClient.invalidateQueries({ queryKey: ['index-stats', indexType] });
+    onSuccess: async () => {
+      // Invalidate and refetch immediately
+      await queryClient.invalidateQueries({ queryKey: ['index-structure', indexType] });
+      await queryClient.invalidateQueries({ queryKey: ['index-stats', indexType] });
+      await queryClient.refetchQueries({ queryKey: ['index-structure', indexType] });
+      await queryClient.refetchQueries({ queryKey: ['index-stats', indexType] });
       setWordToDelete('');
       setShowDeleteConfirm(false);
       setWordToDeleteConfirm('');

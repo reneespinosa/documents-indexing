@@ -81,8 +81,9 @@ class SuffixTreeIndex(InvertedIndex):
         
         # If it's a new word, generate suffixes and rebuild tree
         if is_new_word:
-            self.word_to_suffixes[word_lower] = self._generate_suffixes(word_lower)
-            # Rebuild suffix tree with all words
+            if word_lower not in self.word_to_suffixes:
+                self.word_to_suffixes[word_lower] = self._generate_suffixes(word_lower)
+            # Always rebuild suffix tree when a new word is added
             self._rebuild_suffix_tree()
     
     def _generate_suffixes(self, word: str) -> List[str]:
@@ -277,28 +278,38 @@ class SuffixTreeIndex(InvertedIndex):
             "children": []
         }
         
+        # Ensure all words in word_to_documents have suffixes generated
+        for word in self.word_to_documents.keys():
+            if word not in self.word_to_suffixes:
+                self.word_to_suffixes[word] = self._generate_suffixes(word)
+        
         # Group words by first character
         first_char_groups: Dict[str, List[str]] = {}
-        for word in self.word_to_documents.keys():
+        # Sort words for consistent ordering
+        sorted_words = sorted(self.word_to_documents.keys())
+        for word in sorted_words:
+            if not word:  # Skip empty words
+                continue
             first_char = word[0] if word else ""
             if first_char not in first_char_groups:
                 first_char_groups[first_char] = []
             first_char_groups[first_char].append(word)
         
         # Create tree nodes
-        for first_char, words in first_char_groups.items():
+        for first_char, words in sorted(first_char_groups.items()):
             char_node = {
                 "id": f"char_{first_char}",
                 "label": f"'{first_char}'",
                 "children": []
             }
             
-            for word in words[:10]:  # Limit to 10 words per group for visualization
+            # Show all words, not just first 10, to ensure new words appear
+            for word in words:
                 word_node = {
                     "id": f"word_{word}",
                     "label": word,
                     "metadata": {
-                        "document_count": len(self.word_to_documents[word]),
+                        "document_count": len(self.word_to_documents.get(word, set())),
                         "suffixes": len(self.word_to_suffixes.get(word, []))
                     },
                     "children": []

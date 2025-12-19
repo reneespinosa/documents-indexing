@@ -10,17 +10,19 @@ import Link from 'next/link';
 export default function IndexViewerPage() {
   const [indexType, setIndexType] = useState<'suffix' | 'patricia'>('suffix');
 
-  const { data: structure, isLoading, error: structureError } = useQuery({
+  const { data: structure, isLoading, error: structureError, refetch: refetchStructure } = useQuery({
     queryKey: ['index-structure', indexType],
     queryFn: () => api.getIndexStructure(indexType),
     enabled: true,
     retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const { data: stats, error: statsError } = useQuery({
     queryKey: ['index-stats', indexType],
     queryFn: () => api.getIndexStats(indexType),
     retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const handleIndexTypeChange = (newType: 'suffix' | 'patricia') => {

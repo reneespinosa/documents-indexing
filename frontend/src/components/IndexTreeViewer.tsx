@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import ReactFlow, {
   Node,
   Edge,
   Background,
   Controls,
   MiniMap,
+  ReactFlowInstance,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { IndexStructureResponse } from '@/lib/api';
@@ -189,12 +190,35 @@ function buildNodesAndEdges(
 }
 
 export function IndexTreeViewer({ structure }: IndexTreeViewerProps) {
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const { nodes, edges } = useMemo(() => {
     if (!structure.root) {
       return { nodes: [], edges: [] };
     }
     return buildNodesAndEdges(structure.root);
   }, [structure]);
+
+  // Create a unique key based on structure to force ReactFlow to re-render
+  const structureKey = useMemo(() => {
+    if (!structure.root) return 'empty';
+    // Create a hash from the structure to detect changes
+    const structureHash = JSON.stringify(structure.root);
+    return `${structure.index_type}-${nodes.length}-${edges.length}-${structureHash.length}`;
+  }, [structure, nodes.length, edges.length]);
+
+  // Force fitView when structure changes
+  useEffect(() => {
+    if (reactFlowInstance && nodes.length > 0) {
+      const timer = setTimeout(() => {
+        reactFlowInstance.fitView({ duration: 300, padding: 0.2 });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [reactFlowInstance, structureKey, nodes.length]);
+
+  const onInit = (instance: ReactFlowInstance) => {
+    setReactFlowInstance(instance);
+  };
 
   if (nodes.length === 0) {
     return (
@@ -216,8 +240,10 @@ export function IndexTreeViewer({ structure }: IndexTreeViewerProps) {
       </div>
       <div style={{ width: '100%', height: '600px' }} className="rounded-xl overflow-hidden border border-white/10 bg-dark-bg">
         <ReactFlow 
+          key={structureKey}
           nodes={nodes} 
           edges={edges} 
+          onInit={onInit}
           fitView
           className="bg-dark-bg"
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
