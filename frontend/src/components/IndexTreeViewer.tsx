@@ -15,87 +15,87 @@ interface IndexTreeViewerProps {
   structure: IndexStructureResponse;
 }
 
-interface TreeNodeLayout {
-  node: IndexStructureResponse['root'];
+interface NodeLayout {
+  id: string;
   x: number;
   y: number;
-  width: number;
-  mod: number;
+  node: IndexStructureResponse['root'];
 }
 
 // Constantes para el layout
 const NODE_WIDTH = 150;
-const NODE_HEIGHT = 80;
 const LEVEL_HEIGHT = 200;
-const SIBLING_SPACING = 100;
-const SUBTREE_SPACING = 50;
+const SIBLING_SPACING = 120; // Espaciado horizontal entre nodos hermanos
+const MIN_SUBTREE_WIDTH = NODE_WIDTH; // Ancho mínimo de un subárbol
 
-// Primera pasada: calcular el ancho de cada subárbol
-function calculateSubtreeWidth(node: IndexStructureResponse['root']): number {
+// Calcular el ancho necesario para un subárbol
+function getSubtreeWidth(node: IndexStructureResponse['root']): number {
   if (node.children.length === 0) {
-    return NODE_WIDTH;
+    return MIN_SUBTREE_WIDTH;
   }
   
   let totalWidth = 0;
   for (const child of node.children) {
-    totalWidth += calculateSubtreeWidth(child) + SIBLING_SPACING;
+    totalWidth += getSubtreeWidth(child);
   }
-  totalWidth -= SIBLING_SPACING; // Remover el último espaciado
   
-  return Math.max(NODE_WIDTH, totalWidth);
+  // Agregar espaciado entre hijos
+  if (node.children.length > 1) {
+    totalWidth += (node.children.length - 1) * SIBLING_SPACING;
+  }
+  
+  return Math.max(MIN_SUBTREE_WIDTH, totalWidth);
 }
 
-// Segunda pasada: posicionar los nodos usando un algoritmo jerárquico mejorado
-function positionNodes(
+// Algoritmo de posicionamiento jerárquico mejorado
+function layoutTree(
   node: IndexStructureResponse['root'],
   x: number,
   y: number,
   level: number = 0
-): TreeNodeLayout[] {
-  const layouts: TreeNodeLayout[] = [];
-  const nodeId = node.id || `node-${level}`;
+): NodeLayout[] {
+  const layouts: NodeLayout[] = [];
+  const nodeId = node.id || (level === 0 ? 'root' : `node-${level}-${Math.random()}`);
   
-  let currentX = x;
+  let nodeX = x;
   
   if (node.children.length > 0) {
-    // Calcular el ancho total de todos los hijos
-    const childrenWidths = node.children.map(child => calculateSubtreeWidth(child));
-    const totalChildrenWidth = childrenWidths.reduce((sum, w) => sum + w, 0) + 
+    // Calcular el ancho de cada subárbol hijo
+    const childWidths = node.children.map(child => getSubtreeWidth(child));
+    const totalChildrenWidth = childWidths.reduce((sum, w) => sum + w, 0) + 
                                (node.children.length - 1) * SIBLING_SPACING;
     
-    // Centrar el nodo padre sobre sus hijos
-    const parentX = x + totalChildrenWidth / 2 - NODE_WIDTH / 2;
-    currentX = parentX;
+    // Posicionar el nodo actual centrado sobre sus hijos
+    nodeX = x + totalChildrenWidth / 2 - NODE_WIDTH / 2;
     
-    // Posicionar cada hijo
-    let childX = x;
+    // Posicionar cada hijo recursivamente
+    let currentX = x;
     for (let i = 0; i < node.children.length; i++) {
       const child = node.children[i];
-      const childWidth = childrenWidths[i];
+      const childWidth = childWidths[i];
       
-      // Posicionar el hijo centrado en su subárbol
-      const childCenterX = childX + childWidth / 2;
-      const childLayouts = positionNodes(
+      // Calcular la posición X del hijo (centrado en su subárbol)
+      const childSubtreeX = currentX;
+      const childLayouts = layoutTree(
         child,
-        childX,
+        childSubtreeX,
         y + LEVEL_HEIGHT,
         level + 1
       );
       
       layouts.push(...childLayouts);
       
-      // Mover x para el siguiente hijo
-      childX += childWidth + SIBLING_SPACING;
+      // Mover la posición X para el siguiente hijo
+      currentX += childWidth + SIBLING_SPACING;
     }
   }
   
-  // Agregar el nodo actual
-  layouts.push({
-    node,
-    x: currentX,
+  // Agregar el nodo actual al inicio para mantener orden jerárquico
+  layouts.unshift({
+    id: nodeId,
+    x: nodeX,
     y,
-    width: NODE_WIDTH,
-    mod: 0,
+    node,
   });
   
   return layouts;
